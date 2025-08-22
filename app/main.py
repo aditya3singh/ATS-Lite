@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import RedirectResponse
 import os
 
 from .config import get_settings
@@ -27,6 +28,11 @@ def on_startup() -> None:
 app.mount("/app", StaticFiles(directory="app/frontend", html=True), name="frontend")
 if os.path.isdir("frontend/dist"):
     app.mount("/ui", StaticFiles(directory="frontend/dist", html=True), name="react-ui")
+
+# Ensure /ui (no trailing slash) loads correctly
+@app.get("/ui")
+def _ui_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/ui/")
 
 
 @app.get("/health")
