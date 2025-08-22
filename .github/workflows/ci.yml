@@ -49,9 +49,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ats-lite/frontend/package-lock.json
 
-      - name: Install and build
+      - name: Install, lint, format check, and build
         working-directory: ./ats-lite/frontend
         run: |
           npm ci
+          npm run lint -- --max-warnings=0
+          npm run format
           npm run build
 

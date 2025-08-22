@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/aditya3singh/ATS-Lite/actions/workflows/ci.yml/badge.svg)](https://github.com/aditya3singh/ATS-Lite/actions/workflows/ci.yml)
 
+CI runs backend static checks and E2E, plus frontend ESLint, Prettier check, and build.
+
 Simple ATS-like system with resume upload, parsing, and matching against job descriptions using FastAPI and SQLAlchemy. The app serves a minimal static UI and an optional Vite React UI. Background tasks use FastAPI's built-in BackgroundTasks (no Celery/Redis).
 
 ## Features
@@ -57,6 +59,13 @@ npm install
 npm run build
 ```
 Then run the FastAPI server and navigate to `/ui/`.
+
+### Frontend Lint & Format
+From `frontend/`:
+```bash
+npm run lint        # ESLint (no warnings allowed in CI)
+npm run format      # Prettier check (use `format:fix` locally to write)
+```
 
 ## End-to-End Check
 You can run a quick E2E test against the in-process app using FastAPI's TestClient:
