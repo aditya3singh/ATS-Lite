@@ -70,6 +70,16 @@ button.link {
   background: #ffebee;
 }
 
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  background: #333;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
 .list {
   text-align: left;
 }

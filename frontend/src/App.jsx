@@ -58,6 +58,9 @@ export default function App() {
   const [token, setToken] = usePersistentState('ats_token', '');
   const [jobs, setJobs] = useState([]);
   const [resumes, setResumes] = useState([]);
+  const [jobsPage, setJobsPage] = useState(0);
+  const [resumesPage, setResumesPage] = useState(0);
+  const pageSize = 10;
   const [jobTitle, setJobTitle] = useState('');
   const [jobDesc, setJobDesc] = useState('');
   const [jobSkills, setJobSkills] = useState('');
@@ -66,6 +69,7 @@ export default function App() {
   const [matchResult, setMatchResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
 
   const isAuthed = useMemo(() => Boolean(token), [token]);
 
@@ -74,6 +78,7 @@ export default function App() {
     setLoading(true);
     try {
       await asyncFn();
+      setToast('Done');
     } catch (e) {
       setError(e?.message || 'Something went wrong');
     } finally {
@@ -112,9 +117,10 @@ export default function App() {
   }
 
   const listJobs = useCallback(async () => {
-    const js = await api.auth('/jobs/', token);
+    const skip = jobsPage * pageSize;
+    const js = await api.auth(`/jobs/?skip=${skip}&limit=${pageSize}`, token);
     setJobs(js);
-  }, [token]);
+  }, [token, jobsPage]);
 
   async function uploadResume(e) {
     e.preventDefault();
@@ -133,9 +139,41 @@ export default function App() {
   }
 
   const listResumes = useCallback(async () => {
-    const rs = await api.auth('/resumes/', token);
+    const skip = resumesPage * pageSize;
+    const rs = await api.auth(`/resumes/?skip=${skip}&limit=${pageSize}`, token);
     setResumes(rs);
-  }, [token]);
+  }, [token, resumesPage]);
+
+  const updateJob = useCallback(
+    async (jobId, { title, description, skills }) => {
+      const skillList = (skills || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const updated = await api.auth(`/jobs/${jobId}`, token, {
+        method: 'PUT',
+        body: JSON.stringify({ title, description, skills: skillList }),
+      });
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? updated : j)));
+    },
+    [token]
+  );
+
+  const deleteJob = useCallback(
+    async (jobId) => {
+      await api.auth(`/jobs/${jobId}`, token, { method: 'DELETE' });
+      setJobs((prev) => prev.filter((j) => j.id !== jobId));
+    },
+    [token]
+  );
+
+  const deleteResume = useCallback(
+    async (resumeId) => {
+      await api.auth(`/resumes/${resumeId}`, token, { method: 'DELETE' });
+      setResumes((prev) => prev.filter((r) => r.id !== resumeId));
+    },
+    [token]
+  );
 
   async function doMatch() {
     const r = await api.auth(`/matching/resume/${matchResumeId}/job/${matchJobId}`, token);
@@ -160,6 +198,11 @@ export default function App() {
 
       {error ? <div className="alert error">{error}</div> : null}
       {loading ? <div className="alert info">Working...</div> : null}
+      {toast && !loading ? (
+        <div className="toast" onAnimationEnd={() => setToast('')}>
+          {toast}
+        </div>
+      ) : null}
 
         <nav className="row" style={{ justifyContent: 'space-between' }}>
           <div>
@@ -214,12 +257,17 @@ export default function App() {
                   loading={loading}
                   createJob={({ title, description, skills }) =>
                     wrap(async () => {
-                      const skillList = skills.split(',').map((s) => s.trim()).filter(Boolean);
+                      const skillList = (skills || '').split(',').map((s) => s.trim()).filter(Boolean);
                       const job = await api.auth('/jobs/', token, { method: 'POST', body: JSON.stringify({ title, description, skills: skillList }) });
                       setJobs((prev) => [job, ...prev]);
                     })
                   }
                   listJobs={() => wrap(listJobs)}
+                  updateJob={(id, payload) => wrap(() => updateJob(id, payload))}
+                  deleteJob={(id) => wrap(() => deleteJob(id))}
+                  page={jobsPage}
+                  setPage={setJobsPage}
+                  pageSize={pageSize}
                 />
               ) : (
                 <Navigate to="/" replace />
@@ -235,7 +283,11 @@ export default function App() {
                   resumes={resumes}
                   listResumes={() => wrap(listResumes)}
                   uploadResume={(e) => wrap(() => uploadResume(e))}
+                  deleteResume={(id) => wrap(() => deleteResume(id))}
                   loading={loading}
+                  page={resumesPage}
+                  setPage={setResumesPage}
+                  pageSize={pageSize}
                 />
               ) : (
                 <Navigate to="/" replace />

@@ -53,7 +53,24 @@ def upload_resume(background_tasks: BackgroundTasks, file: UploadFile = File(...
 
 
 @router.get("/", response_model=list[ResumeOut])
-def list_resumes(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    return db.query(Resume).filter(Resume.user_id == user.id).order_by(Resume.id.desc()).all()
+def list_resumes(skip: int = 0, limit: int = 20, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    q = (
+        db.query(Resume)
+        .filter(Resume.user_id == user.id)
+        .order_by(Resume.id.desc())
+        .offset(max(skip, 0))
+        .limit(max(min(limit, 100), 1))
+    )
+    return q.all()
+
+
+@router.delete("/{resume_id}")
+def delete_resume(resume_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    resume = db.get(Resume, resume_id)
+    if not resume or resume.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    db.delete(resume)
+    db.commit()
+    return {"ok": True}
 
 
