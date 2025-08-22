@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
+import AuthPage from './pages/Auth.jsx';
+import JobsPage from './pages/Jobs.jsx';
+import ResumesPage from './pages/Resumes.jsx';
+import MatchPage from './pages/Match.jsx';
 import './App.css';
 
 function usePersistentState(key, initialValue) {
@@ -149,142 +154,116 @@ export default function App() {
   }, [isAuthed, listJobs, listResumes]);
 
   return (
-    <div className="container">
-      <h1>ATS-lite UI</h1>
+    <BrowserRouter basename="/ui">
+      <div className="container">
+        <h1>ATS-lite UI</h1>
 
       {error ? <div className="alert error">{error}</div> : null}
       {loading ? <div className="alert info">Working...</div> : null}
 
-      <div className="card">
-        <h2>{isAuthed ? 'Account' : 'Authenticate to continue'}</h2>
-        {!isAuthed ? (
-          <>
-            <div className="row">
-              <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <input
-                type="password"
-                placeholder="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <input
-                placeholder="full name (optional)"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
-            </div>
-            <div className="row">
-              <button disabled={loading} onClick={() => wrap(signup)}>
-                Sign up
-              </button>
-              <button disabled={loading} onClick={() => wrap(login)}>
-                Log in
-              </button>
-              <span className={`status ${isAuthed ? 'ok' : 'warn'}`}>
-                {isAuthed ? 'Authenticated' : 'Not logged in'}
-              </span>
-            </div>
-          </>
-        ) : (
-          <div className="row">
-            <span className="status ok">Signed in</span>
-            <button
-              className="link"
-              onClick={() => {
-                setToken('');
-              }}
-            >
-              Log out
-            </button>
+        <nav className="row" style={{ justifyContent: 'space-between' }}>
+          <div>
+            <Link to="/">Home</Link>
+            {isAuthed && (
+              <>
+                {' '}| <Link to="/jobs">Jobs</Link> | <Link to="/resumes">Resumes</Link> |{' '}
+                <Link to="/match">Match</Link>
+              </>
+            )}
           </div>
-        )}
-      </div>
+          <div>
+            {isAuthed ? (
+              <button className="link" onClick={() => setToken('')}>Log out</button>
+            ) : null}
+          </div>
+        </nav>
 
-      {isAuthed && (
-      <div className="card">
-        <h2>Jobs</h2>
-        <div className="row">
-          <input
-            placeholder="title"
-            value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              isAuthed ? (
+                <Navigate to="/jobs" replace />
+              ) : (
+                <AuthPage
+                  loading={loading}
+                  onSignup={({ email, password, fullName }) =>
+                    wrap(() => api.json('/auth/signup', {
+                      method: 'POST',
+                      body: JSON.stringify({ email, password, full_name: fullName || null }),
+                    }))
+                  }
+                  onLogin={({ email, password }) =>
+                    wrap(async () => {
+                      const res = await api.json('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+                      setToken(res.access_token);
+                    })
+                  }
+                />
+              )
+            }
           />
-        </div>
-        <div className="row">
-          <textarea
-            placeholder="description"
-            value={jobDesc}
-            onChange={(e) => setJobDesc(e.target.value)}
+          <Route
+            path="/jobs"
+            element={
+              isAuthed ? (
+                <JobsPage
+                  token={token}
+                  jobs={jobs}
+                  setJobs={setJobs}
+                  loading={loading}
+                  createJob={({ title, description, skills }) =>
+                    wrap(async () => {
+                      const skillList = skills.split(',').map((s) => s.trim()).filter(Boolean);
+                      const job = await api.auth('/jobs/', token, { method: 'POST', body: JSON.stringify({ title, description, skills: skillList }) });
+                      setJobs((prev) => [job, ...prev]);
+                    })
+                  }
+                  listJobs={() => wrap(listJobs)}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
           />
-        </div>
-        <div className="row">
-          <input
-            placeholder="skills (comma)"
-            value={jobSkills}
-            onChange={(e) => setJobSkills(e.target.value)}
+          <Route
+            path="/resumes"
+            element={
+              isAuthed ? (
+                <ResumesPage
+                  token={token}
+                  resumes={resumes}
+                  listResumes={() => wrap(listResumes)}
+                  uploadResume={(e) => wrap(() => uploadResume(e))}
+                  loading={loading}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
           />
-        </div>
-        <div className="row">
-          <button disabled={!isAuthed || loading || !jobTitle} onClick={() => wrap(createJob)}>
-            Create Job
-          </button>
-          <button disabled={!isAuthed || loading} onClick={() => wrap(listJobs)}>
-            Refresh Jobs
-          </button>
-        </div>
-        <ul className="list">
-          {jobs.map((j) => (
-            <li key={j.id}>
-              #{j.id} {j.title}
-            </li>
-          ))}
-        </ul>
+          <Route
+            path="/match"
+            element={
+              isAuthed ? (
+                <MatchPage
+                  token={token}
+                  matchResumeId={matchResumeId}
+                  setMatchResumeId={setMatchResumeId}
+                  matchJobId={matchJobId}
+                  setMatchJobId={setMatchJobId}
+                  doMatch={() => wrap(doMatch)}
+                  matchResult={matchResult}
+                  loading={loading}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
-      )}
-
-      {isAuthed && (
-      <div className="card">
-        <h2>Resumes</h2>
-        <form className="row" onSubmit={(e) => wrap(() => uploadResume(e))}>
-          <input type="file" name="file" />
-          <button disabled={!isAuthed || loading} type="submit">
-            Upload
-          </button>
-          <button disabled={!isAuthed || loading} type="button" onClick={() => wrap(listResumes)}>
-            Refresh
-          </button>
-        </form>
-        <ul className="list">
-          {resumes.map((r) => (
-            <li key={r.id}>
-              #{r.id} {r.filename} — parsed: {String(r.parsed)}
-            </li>
-          ))}
-        </ul>
-      </div>
-      )}
-
-      {isAuthed && (
-      <div className="card">
-        <h2>Match</h2>
-        <div className="row">
-          <input
-            placeholder="resume id"
-            value={matchResumeId}
-            onChange={(e) => setMatchResumeId(e.target.value)}
-          />
-          <input
-            placeholder="job id"
-            value={matchJobId}
-            onChange={(e) => setMatchJobId(e.target.value)}
-          />
-          <button disabled={!isAuthed || loading} onClick={() => wrap(doMatch)}>
-            Score
-          </button>
-        </div>
-        <div className="result">{matchResult}</div>
-      </div>
-      )}
-    </div>
+    </BrowserRouter>
   );
 }
