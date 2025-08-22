@@ -156,32 +156,38 @@ export default function App() {
       {loading ? <div className="alert info">Working...</div> : null}
 
       <div className="card">
-        <h2>Auth</h2>
-        <div className="row">
-          <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input
-            type="password"
-            placeholder="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <input
-            placeholder="full name (optional)"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
-        </div>
-        <div className="row">
-          <button disabled={loading} onClick={() => wrap(signup)}>
-            Sign up
-          </button>
-          <button disabled={loading} onClick={() => wrap(login)}>
-            Log in
-          </button>
-          <span className={`status ${isAuthed ? 'ok' : 'warn'}`}>
-            {isAuthed ? 'Authenticated' : 'Not logged in'}
-          </span>
-          {isAuthed ? (
+        <h2>{isAuthed ? 'Account' : 'Authenticate to continue'}</h2>
+        {!isAuthed ? (
+          <>
+            <div className="row">
+              <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input
+                type="password"
+                placeholder="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <input
+                placeholder="full name (optional)"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+            <div className="row">
+              <button disabled={loading} onClick={() => wrap(signup)}>
+                Sign up
+              </button>
+              <button disabled={loading} onClick={() => wrap(login)}>
+                Log in
+              </button>
+              <span className={`status ${isAuthed ? 'ok' : 'warn'}`}>
+                {isAuthed ? 'Authenticated' : 'Not logged in'}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="row">
+            <span className="status ok">Signed in</span>
             <button
               className="link"
               onClick={() => {
@@ -190,10 +196,11 @@ export default function App() {
             >
               Log out
             </button>
-          ) : null}
-        </div>
+          </div>
+        )}
       </div>
 
+      {isAuthed && (
       <div className="card">
         <h2>Jobs</h2>
         <div className="row">
@@ -233,7 +240,9 @@ export default function App() {
           ))}
         </ul>
       </div>
+      )}
 
+      {isAuthed && (
       <div className="card">
         <h2>Resumes</h2>
         <form className="row" onSubmit={(e) => wrap(() => uploadResume(e))}>
@@ -253,7 +262,9 @@ export default function App() {
           ))}
         </ul>
       </div>
+      )}
 
+      {isAuthed && (
       <div className="card">
         <h2>Match</h2>
         <div className="row">
@@ -273,6 +284,7 @@ export default function App() {
         </div>
         <div className="result">{matchResult}</div>
       </div>
+      )}
     </div>
   );
 }
